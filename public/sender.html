@@ -1,0 +1,99 @@
+<!-- public/sender.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebRTC Audio Sender</title>
+</head>
+<body>
+  <h1>WebRTC Audio Sender</h1>
+
+  <!-- User creation form -->
+  <form id="userForm">
+    <label for="username">Enter your name:</label>
+    <input type="text" id="username" required>
+    <button type="button" onclick="createUser()">Create User</button>
+  </form>
+
+  <!-- Connect form -->
+  <form id="connectForm">
+    <label for="senderName">Sender Name:</label>
+    <input type="text" id="senderName" required>
+    <label for="receiverName">Receiver Name:</label>
+    <input type="text" id="receiverName" required>
+    <button type="button" onclick="connect()">Connect</button>
+  </form>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const socket = io();
+      let localStream;
+      let audioSender;
+
+      // Function to create a user
+      window.createUser = () => {
+        const username = document.getElementById('username').value;
+        if (username.trim() !== '') {
+          socket.emit('createUser', username);
+        } else {
+          alert('Please enter your name.');
+        }
+      };
+
+      // Function to handle Connect button click
+      window.connect = async () => {
+        const senderName = document.getElementById('senderName').value;
+        const receiverName = document.getElementById('receiverName').value;
+
+        if (senderName.trim() !== '' && receiverName.trim() !== '') {
+          // Create an offer
+          const offer = await createOffer();
+          
+          // Send the offer to the receiver
+          socket.emit('initiateCall', {
+            senderUsername: senderName,
+            receiverUsername: receiverName,
+            offer: offer.sdp,
+          });
+
+          console.log(`Connection initiated from ${senderName} to ${receiverName}.`);
+        } else {
+          alert('Please enter both sender and receiver names.');
+        }
+      };
+
+      // Function to create an offer
+      async function createOffer() {
+        try {
+          audioSender = new RTCPeerConnection();
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          localStream = audioStream;
+          const audioTracks = audioStream.getAudioTracks();
+          audioTracks.forEach(track => audioSender.addTrack(track, audioStream));
+
+          const offer = await audioSender.createOffer();
+          await audioSender.setLocalDescription(offer);
+
+          return audioSender.localDescription;
+        } catch (error) {
+          console.error('Error creating offer:', error);
+        }
+      }
+
+      // Handle answer from the receiver
+      socket.on('answer', async (data) => {
+        console.log(`Received answer from ${data.receiverUsername}.`);
+        const answer = new RTCSessionDescription({ type: 'answer', sdp: data.answer });
+        await audioSender.setRemoteDescription(answer);
+      });
+
+      // Log when the user list is received
+      socket.on('userList', (users) => {
+        console.log('User list:', users);
+      });
+    });
+  </script>
+</body>
+</html>

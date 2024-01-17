@@ -1,0 +1,87 @@
+<!-- public/receiver.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebRTC Audio Receiver</title>
+</head>
+<body>
+  <h1>WebRTC Audio Receiver</h1>
+
+  <!-- User creation form -->
+  <form id="userForm">
+    <label for="username">Enter your name:</label>
+    <input type="text" id="username" required>
+    <button type="button" onclick="createUser()">Create User</button>
+  </form>
+
+  <!-- Audio playback element -->
+  <audio id="remoteAudio" autoplay></audio>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const socket = io();
+      let audioReceiver;
+      let remoteStream;
+
+      // Function to create a user
+      window.createUser = () => {
+        const username = document.getElementById('username').value;
+        if (username.trim() !== '') {
+          socket.emit('createUser', username);
+        } else {
+          alert('Please enter your name.');
+        }
+      };
+
+      // Handle incoming call
+      socket.on('incomingCall', async (data) => {
+        const acceptCall = confirm(`Accept the call from ${data.senderUsername}?`);
+        if (acceptCall) {
+          try {
+            audioReceiver = new RTCPeerConnection();
+            const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioTracks = audioStream.getAudioTracks();
+            audioTracks.forEach(track => audioReceiver.addTrack(track, audioStream));
+
+            const offer = new RTCSessionDescription({ type: 'offer', sdp: data.offer });
+            await audioReceiver.setRemoteDescription(offer);
+
+            const answer = await audioReceiver.createAnswer();
+            await audioReceiver.setLocalDescription(answer);
+
+            socket.emit('acceptCall', {
+              senderUsername: data.senderUsername,
+              receiverUsername: document.getElementById('username').value,
+              answer,
+            });
+
+            console.log(`Call accepted from ${data.senderUsername}.`);
+            
+            // Assuming you have an <audio> element with the ID "remoteAudio" in your HTML
+            const remoteAudio = document.getElementById('remoteAudio');
+
+            // Set the audio source to the received stream
+            remoteAudio.srcObject = audioStream;
+
+            // Autoplay the audio
+            remoteAudio.play().catch(error => console.error('Error playing audio:', error));
+          } catch (error) {
+            console.error('Error accepting call:', error);
+          }
+        } else {
+          // Handle rejection if needed
+          console.log(`Call rejected from ${data.senderUsername}.`);
+        }
+      });
+
+      // Log when the user list is received
+      socket.on('userList', (users) => {
+        console.log('User list:', users);
+      });
+    });
+  </script>
+</body>
+</html>
