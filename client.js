@@ -97,11 +97,11 @@ function handleLogin(success) {
       //********************** 
 		
       //getting local audio stream 
-      navigator.webkitGetUserMedia({ video: false, audio: true }, function (myStream) { 
+       navigator.webkitGetUserMedia({ video: false, audio: true }, function (myStream) { 
          stream = myStream; 
 			
          //displaying local audio stream on the page 
-         localAudio.srcObject = stream;
+       //  localAudio.srcObject = stream;
 			
          //using Google public stun server 
          var configuration = { 
