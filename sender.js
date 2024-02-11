@@ -117,6 +117,7 @@ callBtn.addEventListener("click", function () {
         connectedUser = callToUsername;
 
         yourConn.createOffer().then(function (offer) {
+            console.log("Creating offer from sender.");
             return yourConn.setLocalDescription(offer);
         }).then(function () {
             send({
@@ -129,27 +130,30 @@ callBtn.addEventListener("click", function () {
     }
 });
 
-function handleOffer(offer, name) {
-    connectedUser = name;
-    yourConn.setRemoteDescription(new RTCSessionDescription(offer));
+// function handleOffer(offer, name) {
+//     connectedUser = name;
+//     yourConn.setRemoteDescription(new RTCSessionDescription(offer));
 
-    yourConn.createAnswer().then(function (answer) {
-        return yourConn.setLocalDescription(answer);
-    }).then(function () {
-        send({
-            type: "answer",
-            answer: yourConn.localDescription
-        });
-    }).catch(function (error) {
-        alert("Error when creating an answer");
-    });
-}
+//     yourConn.createAnswer().then(function (answer) {
+//         console.log("Creating answer from sender.");
+//         return yourConn.setLocalDescription(answer);
+//     }).then(function () {
+//         send({
+//             type: "answer",
+//             answer: yourConn.localDescription
+//         });
+//     }).catch(function (error) {
+//         alert("Error when creating an answer");
+//     });
+// }
 
 function handleAnswer(answer) {
+    console.log("handling answer in sender.");
     yourConn.setRemoteDescription(new RTCSessionDescription(answer));
 }
 
 function handleCandidate(candidate) {
+    console.log("handling candidate in sender.");
     yourConn.addIceCandidate(new RTCIceCandidate(candidate));
 }
 
@@ -163,9 +167,15 @@ hangUpBtn.addEventListener("click", function () {
 
 function handleLeave() {
     connectedUser = null;
-    remoteAudio.srcObject = null;
-
-    yourConn.close();
-    yourConn.onicecandidate = null;
-    yourConn.ontrack = null;
-}
+    
+    if (remoteAudio) {
+       remoteAudio.srcObject = null;
+    }
+ 
+    if (yourConn) {
+       yourConn.close();
+       yourConn.onicecandidate = null;
+       yourConn.ontrack = null;
+    }
+ }
+ 

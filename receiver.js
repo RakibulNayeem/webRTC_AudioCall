@@ -1,8 +1,8 @@
-// receiver.js
-
 var name;
 var connectedUser;
 var conn = new WebSocket('ws://localhost:9090');
+var yourConn;
+var stream;
 
 conn.onopen = function () {
     console.log("Connected to the signaling server");
@@ -51,9 +51,8 @@ var loginBtn = document.querySelector('#loginBtn');
 
 var callPage = document.querySelector('#callPage');
 var remoteAudio = document.querySelector('#remoteAudio');
-
-var yourConn;
-var stream;
+var acceptBtn = document.querySelector('#acceptBtn');
+var hangUpBtn = document.querySelector('#hangUpBtn');
 
 callPage.style.display = "none";
 
@@ -93,23 +92,35 @@ function handleOffer(offer, name) {
     connectedUser = name;
     yourConn.setRemoteDescription(new RTCSessionDescription(offer));
 
-    yourConn.createAnswer().then(function (answer) {
-        return yourConn.setLocalDescription(answer);
-    }).then(function () {
-        send({
-            type: "answer",
-            answer: yourConn.localDescription
+    var isCallAccepted = confirm("You have an incoming call from " + name + ". Do you want to accept?");
+    
+    if (isCallAccepted) {
+        yourConn.createAnswer().then(function (answer) {
+            console.log("Creating answer from receiver.");
+            return yourConn.setLocalDescription(answer);
+        }).then(function () {
+            send({
+                type: "answer",
+                answer: yourConn.localDescription
+            });
+        }).catch(function (error) {
+            alert("Error when creating an answer");
         });
-    }).catch(function (error) {
-        alert("Error when creating an answer");
-    });
+    } else {
+        send({
+            type: "leave"
+        });
+        handleLeave();
+    }
 }
 
 function handleAnswer(answer) {
+    console.log("handling answer in receiver.");
     yourConn.setRemoteDescription(new RTCSessionDescription(answer));
 }
 
 function handleCandidate(candidate) {
+    console.log("handling candidate in receiver.");
     yourConn.addIceCandidate(new RTCIceCandidate(candidate));
 }
 
@@ -121,3 +132,11 @@ function handleLeave() {
     yourConn.onicecandidate = null;
     yourConn.ontrack = null;
 }
+
+hangUpBtn.addEventListener("click", function () {
+    send({
+        type: "leave"
+    });
+
+    handleLeave();
+});
